@@ -1,0 +1,47 @@
+name: Visual Reports
+
+on:
+  pull_request:
+    branches:
+      - test
+
+jobs:
+  test-and-report:
+    runs-on: self-hosted
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.x'  # Choose your Python version here
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt  # Install project dependencies including pytest and coverage
+
+      - name: Run tests and generate coverage report
+        run: |
+          mkdir -p reports/unit
+          mkdir -p reports/coverage
+          python -m pytest tests --cov=src --cov-report xml:reports/coverage/coverage.xml --junitxml=reports/unit/unit.xml
+        continue-on-error: true
+
+      - name: Upload test and coverage reports
+        uses: actions/upload-artifact@v2
+        with:
+          name: test-coverage-reports
+          path: |
+            reports/unit
+            reports/coverage
+
+      - name: Publish Test Results as PR Comment
+        if: always()  # Ensure this step runs even if previous steps fail
+        uses: mikepenz/action-junit-report@v4
+        with:
+          report_paths: ./reports/unit/unit.xml
+          github_token: ${{ secrets.MY_GITHUB_PAT }}
+

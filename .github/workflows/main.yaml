@@ -2,8 +2,7 @@ name: Visual Reports
 
 on:
   pull_request:
-    branches:
-      - test
+    types: [opened, synchronize, reopened]
 
 jobs:
   test-and-report:

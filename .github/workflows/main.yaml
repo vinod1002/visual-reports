@@ -35,14 +35,15 @@ jobs:
         run: |
           mkdir -p reports/unit
           mkdir -p reports/coverage
-          python -m pytest tests --cov=. --cov-report xml:reports/coverage/coverage.xml --junitxml=reports/unit/unit.xml
+          #pytest tests --cov=. --cov-report xml:reports/coverage/coverage.xml --junitxml=reports/unit/unit.xml
+          pytest --unitxml=test-results.xml --cov=. --cov-report=term-missing --cov-report=xml
         continue-on-error: true
 
       - name: Upload test results
         uses: actions/upload-artifact@v2
         with:
           name: test-results
-          path: reports/unit/unit.xml
+          path: unit.xml
           
       - name: Upload lint results
         uses: actions/upload-artifact@v2
@@ -54,27 +55,27 @@ jobs:
         uses: actions/upload-artifact@v2
         with:
           name: coverage-report
-          path: reports/coverage/coverage.xml
+          path: coverage.xml
 
       - name: Test Reports
         uses: xportation/junit-coverage-report@main
         with:
-          junit-path: reports/unit/unit.xml  
-          coverage-path: reports/coverage/coverage.xml
+          junit-path: test-results.xml  
+          coverage-path: coverage.xml
 
       - name: Create comment with test and coverage results
         if: github.event_name == 'pull_request'
         uses: xportation/junit-coverage-report@main
         with:
-          junit-path: reports/unit/unit.xml
-          coverage-path: reports/coverage/coverage.xml
+          junit-path: test-results.xml
+          coverage-path: coverage.xml
           github-token: ${{ secrets.MY_GITHUB_PAT }}
           
       - name: Publish Test Report
         uses: mikepenz/action-junit-report@v4
         if: always() # always run even if the previous step fails
         with:
-          report_paths: reports/unit/unit.xml
+          report_paths: test-results.xml
           check_name: 'Unit Test Results'
           fail_on_failure: false
           require_tests: true

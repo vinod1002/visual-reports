@@ -1,81 +1,58 @@
-name: visual reports
+name: PR Report
 
 on:
   pull_request:
     types: [opened, synchronize, reopened]
     
 jobs:
-  lint-and-test:
+  report:
     runs-on: self-hosted
-
+    
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
 
-      - name: Install Python
-        run: |
-          sudo apt install -y python3 python3-pip
       - name: Set up Python
         uses: actions/setup-python@v2
         with:
-          python-version: '3.x'
-          
+          python-version: '3.x'  # Choose your Python version here
+
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          pip install -r requirements.txt  # Install project dependencies including pytest and coverage
+
       - name: Run Flake8
         id: flake8
         run: |
           flake8 src --output-file=flake8-result.txt || true
-      - name: Set PYTHONPATH
-        run: |
-          export PYTHONPATH=$PYTHONPATH:$(pwd)/src:$(pwd)/tests
-      - name: Run tests
+      
+      - name: Run tests and generate coverage report
         run: |
           mkdir -p reports/unit
           mkdir -p reports/coverage
-          #pytest tests --cov=. --cov-report xml:reports/coverage/coverage.xml --junitxml=reports/unit/unit.xml
-          pytest --unitxml=test-results.xml --cov=. --cov-report=term-missing --cov-report=xml
+          python -m pytest tests --cov=. --cov-report xml:reports/coverage/coverage.xml --junitxml=reports/unit/unit.xml
         continue-on-error: true
 
-      - name: Upload test results
+      - name: Upload test and coverage reports
         uses: actions/upload-artifact@v2
         with:
-          name: test-results
-          path: unit.xml
-          
-      - name: Upload lint results
-        uses: actions/upload-artifact@v2
-        with:
-          name: lint-results
-          path: flake8-result.txt
+          name: test-coverage-reports
+          path: |
+            reports/unit
+            reports/coverage
 
-      - name: Upload coverage report
-        uses: actions/upload-artifact@v2
-        with:
-          name: coverage-report
-          path: coverage.xml
-
-      - name: Test Reports
+      - name: Generate JUnit and Coverage Report
         uses: xportation/junit-coverage-report@main
         with:
-          junit-path: test-results.xml  
-          coverage-path: coverage.xml
-
-      - name: Create comment with test and coverage results
-        if: github.event_name == 'pull_request'
-        uses: xportation/junit-coverage-report@main
-        with:
-          junit-path: test-results.xml
-          coverage-path: coverage.xml
+          junit-path: reports/unit/unit.xml
+          coverage-path: reports/coverage/coverage.xml
           github-token: ${{ secrets.MY_GITHUB_PAT }}
-          
-      - name: Publish Test Report
+
+      - name: Publish Test Results as PR Comment
         uses: mikepenz/action-junit-report@v4
-        if: always() # always run even if the previous step fails
+        if: always()  # Ensure this step runs even if previous steps fail
         with:
-          report_paths: test-results.xml
-          check_name: 'Unit Test Results'
-          fail_on_failure: false
-          require_tests: true
+          report_paths: 'reports/unit/unit.xml'
+          github_token: ${{ secrets.MY_GITHUB_PAT }}
+
